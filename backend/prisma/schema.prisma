@@ -1,0 +1,162 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Difficulty {
+  Beginner
+  Intermediate
+  Advanced
+  Expert
+}
+
+enum GameStatus {
+  Active
+  Beta
+  ComingSoon
+}
+
+model User {
+  id            String   @id @default(uuid())
+  name          String
+  email         String   @unique
+  avatar        String?
+  selectedTrack String   @default("cybersecurity")
+  totalXP       Int      @default(0)
+  currentLevel  Int      @default(1)
+  createdAt     DateTime @default(now())
+
+  progress     UserGameProgress[]
+  achievements UserAchievement[]
+  scores       Score[]
+  sessions     GameSession[]
+}
+
+model Track {
+  id          String     @id
+  name        String
+  slug        String     @unique
+  description String
+  icon        String
+  banner      String
+  color       String
+  difficulty  Difficulty @default(Beginner)
+  skills      String[]
+  active      Boolean    @default(true)
+  games       Game[]
+}
+
+model Game {
+  id                 String     @id @default(uuid())
+  title              String
+  slug               String     @unique
+  description        String
+  shortDescription   String
+  thumbnail          String
+  banner             String
+  domainId           String
+  difficulty         Difficulty @default(Intermediate)
+  estimatedTime      String
+  skills             String[]
+  learningObjectives String[]
+  rules              String[]
+  gameEngine         String     @default("phaser")
+  gameUrl            String?
+  status             GameStatus @default(Active)
+  featured           Boolean    @default(false)
+  xpReward           Int        @default(250)
+  playerCount        Int        @default(0)
+  rating             Float      @default(5.0)
+  createdAt          DateTime   @default(now())
+
+  domain     Track              @relation(fields: [domainId], references: [id])
+  levels     GameLevel[]
+  progress   UserGameProgress[]
+  scores     Score[]
+  sessions   GameSession[]
+}
+
+model GameLevel {
+  id                 String     @id @default(uuid())
+  gameId             String
+  levelNumber        Int
+  title              String
+  description        String
+  difficulty         Difficulty @default(Beginner)
+  requiredXP         Int        @default(0)
+  unlockRequirement  String?
+  objectives         String[]
+
+  game               Game       @relation(fields: [gameId], references: [id], onDelete: Cascade)
+}
+
+model UserGameProgress {
+  id                   String   @id @default(uuid())
+  userId               String
+  gameId               String
+  currentLevel         Int      @default(1)
+  completionPercentage Int      @default(0)
+  highestScore         Int      @default(0)
+  bestTime             String   @default("00:00")
+  XP                   Int      @default(0)
+  status               String   @default("In Progress")
+  lastPlayedAt         DateTime @updatedAt
+
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  game                 Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, gameId])
+}
+
+model Achievement {
+  id          String   @id
+  title       String
+  description String
+  icon        String
+  requirement String
+  category    String
+  XPReward    Int      @default(100)
+
+  users       UserAchievement[]
+}
+
+model UserAchievement {
+  userId        String
+  achievementId String
+  unlockedAt    DateTime @default(now())
+
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement   Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+  @@id([userId, achievementId])
+}
+
+model Score {
+  id        String   @id @default(uuid())
+  userId    String
+  gameId    String
+  score     Int
+  level     Int
+  timestamp DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id])
+  game      Game     @relation(fields: [gameId], references: [id])
+}
+
+model GameSession {
+  id                 String   @id @default(uuid())
+  userId             String
+  gameId             String
+  level              Int
+  score              Int
+  status             String   @default("completed")
+  threatsNeutralized Int?
+  createdAt          DateTime @default(now())
+
+  user               User     @relation(fields: [userId], references: [id])
+  game               Game     @relation(fields: [gameId], references: [id])
+}
